@@ -1,0 +1,21 @@
+# secrets & local config
+.env
+*.pem
+*_deploy_key
+deploy_key
+deploy_key.pub
+*.key
+
+# working data (clone, build scratch, gradle cache, staged jars, ssh)
+/.work/
+/data/
+
+# node
+node_modules/
+npm-debug.log*
+
+# os / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/

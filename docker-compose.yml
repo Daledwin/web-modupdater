@@ -1,0 +1,32 @@
+# Usage:
+#   1. Copy .env.example to .env and fill in DEPLOY_KEY_PATH (+ optional overrides).
+#   2. docker compose up --build
+#   3. Open http://127.0.0.1:8787
+#
+# The deploy key is bind-mounted read-only; the app copies it to a 0600 file
+# inside /data so ssh is happy regardless of host permissions.
+
+services:
+  modupdater:
+    build: .
+    container_name: web-modupdater
+    ports:
+      - "127.0.0.1:${PORT:-8787}:8787"
+    environment:
+      MODPACK_REPO_SSH: ${MODPACK_REPO_SSH:-git@github.com:Daledwin/modpack.git}
+      MODPACK_BRANCHES: ${MODPACK_BRANCHES:-staging,main}
+      MODPACK_DEFAULT_BRANCH: ${MODPACK_DEFAULT_BRANCH:-staging}
+      MODPACK_MC_VERSION: ${MODPACK_MC_VERSION:-1.21.11}
+      GIT_AUTHOR_NAME: ${GIT_AUTHOR_NAME:-modpack-tool}
+      GIT_AUTHOR_EMAIL: ${GIT_AUTHOR_EMAIL:-modpack-tool@local}
+      DEPLOY_KEY_PATH: /run/secrets/deploy_key
+      WORK_DIR: /data
+      MODPACK_CLONE_DIR: /data/modpack-clone
+      HOST: 0.0.0.0
+      PORT: 8787
+    volumes:
+      # Persistent clone + build scratch + gradle cache + normalized key.
+      - ./data:/data
+      # Your SSH deploy key (path comes from .env), mounted read-only.
+      - ${DEPLOY_KEY_PATH:?Set DEPLOY_KEY_PATH in .env to your deploy key path}:/run/secrets/deploy_key:ro
+    restart: unless-stopped

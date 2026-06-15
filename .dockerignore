@@ -1,0 +1,11 @@
+.git
+.gitignore
+node_modules
+.work
+data
+.env
+*.pub
+*_deploy_key
+deploy_key
+README.md
+test

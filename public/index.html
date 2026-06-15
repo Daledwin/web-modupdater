@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>modpack // deploy</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%230c0d0b'/><rect x='28' y='28' width='44' height='44' fill='%23c4f042'/></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"><span></span></div>
+      <div class="brand-text">
+        <h1>MODPACK<i>//</i>DEPLOY</h1>
+        <p>fabric mod publisher · pushes via ssh deploy key</p>
+      </div>
+    </div>
+    <div class="status-cluster">
+      <div class="chip" id="repoChip" title="target repository">
+        <label>repo</label><span data-repo>—</span>
+      </div>
+      <div class="chip" id="mcChip" title="expected minecraft version">
+        <label>mc</label><span data-mc>—</span>
+      </div>
+      <button class="chip key" id="keyChip" title="check deploy-key access">
+        <span class="dot" data-keydot></span><span data-keytext>deploy key</span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ===================== OPERATION COLUMN ===================== -->
+    <section class="panel op">
+      <div class="panel-head">
+        <h2><span class="idx">01</span> Operation</h2>
+        <div class="rail" id="phaseRail" hidden>
+          <span class="ph" data-ph="fetch">fetch</span>
+          <span class="ph" data-ph="validate">validate</span>
+          <span class="ph" data-ph="diff">diff</span>
+          <span class="ph" data-ph="commit">push</span>
+          <span class="ph" data-ph="done">done</span>
+        </div>
+      </div>
+
+      <!-- ---------- SCREEN: FORM ---------- -->
+      <div class="screen" data-screen="form">
+        <form id="opForm">
+          <div class="field">
+            <div class="field-label">Source of the jar</div>
+            <div class="tabs" role="tablist" id="modeTabs">
+              <button type="button" class="tab is-active" data-mode="upload" role="tab">
+                <b>Upload</b><small>a .jar file</small>
+              </button>
+              <button type="button" class="tab" data-mode="url" role="tab">
+                <b>From URL</b><small>release / Modrinth / raw</small>
+              </button>
+              <button type="button" class="tab" data-mode="build" role="tab">
+                <b>Build source</b><small>clone + gradlew</small>
+              </button>
+            </div>
+
+            <div class="pane is-active" data-pane="upload">
+              <label class="dropzone" id="dropzone">
+                <input type="file" id="fileInput" accept=".jar" hidden />
+                <div class="dz-inner">
+                  <div class="dz-glyph">⤓</div>
+                  <div class="dz-text"><b>Drop a .jar here</b> or click to browse</div>
+                  <div class="dz-file" id="dzFile" hidden></div>
+                </div>
+              </label>
+            </div>
+
+            <div class="pane" data-pane="url">
+              <input type="url" id="urlInput" class="text" placeholder="https://…/something.jar" autocomplete="off" />
+              <p class="hint">Direct link to a <code>.jar</code> — GitHub release asset, Modrinth/CurseForge CDN, or raw git. Redirects are followed.</p>
+            </div>
+
+            <div class="pane" data-pane="build">
+              <input type="url" id="repoInput" class="text" placeholder="https://github.com/owner/mod-source.git" autocomplete="off" />
+              <p class="hint">Public source repo with a Gradle wrapper. Runs <code>./gradlew build</code> (needs <b>JDK&nbsp;21</b> — use the Docker image). Takes the production jar from <code>build/libs</code>.</p>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <div class="field-label">Side</div>
+              <div class="seg" id="sideSeg">
+                <label><input type="radio" name="side" value="server" /><span>server</span></label>
+                <label><input type="radio" name="side" value="client" /><span>client</span></label>
+                <label><input type="radio" name="side" value="both" checked /><span>both</span></label>
+              </div>
+            </div>
+            <div class="field">
+              <div class="field-label">Target branch</div>
+              <div class="seg branch" id="branchSeg"><!-- filled from /api/config --></div>
+            </div>
+          </div>
+
+          <label class="check" id="dryWrap">
+            <input type="checkbox" id="dryRun" />
+            <span class="box"></span>
+            <span>Dry-run — preview the <code>index.json</code> diff only, hide the push button</span>
+          </label>
+
+          <div class="form-actions">
+            <div class="readout" id="branchReadout"></div>
+            <button type="submit" class="btn primary" id="prepareBtn">
+              Prepare <i>→</i>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- ---------- SCREEN: CONSOLE ---------- -->
+      <div class="screen" data-screen="console" hidden>
+        <div class="console-meta" id="consoleMeta"></div>
+        <div class="terminal" id="terminal" aria-live="polite"></div>
+        <div class="err-banner" id="errBanner" hidden>
+          <div class="err-title" id="errTitle"></div>
+          <pre class="err-detail" id="errDetail"></pre>
+        </div>
+        <div class="form-actions" id="consoleActions" hidden>
+          <span></span>
+          <button type="button" class="btn ghost" data-action="reset">Start over</button>
+        </div>
+      </div>
+
+      <!-- ---------- SCREEN: PREVIEW ---------- -->
+      <div class="screen" data-screen="preview" hidden>
+        <div id="previewBody"></div>
+        <div class="form-actions">
+          <button type="button" class="btn ghost" data-action="reset">Cancel</button>
+          <button type="button" class="btn primary" id="confirmBtn">Confirm &amp; push <i>↥</i></button>
+        </div>
+      </div>
+
+      <!-- ---------- SCREEN: DONE ---------- -->
+      <div class="screen" data-screen="done" hidden>
+        <div id="doneBody"></div>
+        <div class="form-actions">
+          <span></span>
+          <button type="button" class="btn primary" data-action="reset">New operation</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== MANIFEST COLUMN ===================== -->
+    <aside class="panel manifest">
+      <div class="panel-head">
+        <h2><span class="idx">02</span> Manifest</h2>
+        <div class="manifest-controls">
+          <div class="seg branch tiny" id="manifestBranchSeg"></div>
+          <button class="icon-btn" id="refreshBtn" title="reload index.json">⟳</button>
+        </div>
+      </div>
+      <div class="manifest-sub" id="manifestSub">index.json on the selected branch</div>
+      <div class="mod-list" id="modList"></div>
+    </aside>
+  </main>
+
+  <footer class="footplate">
+    <span data-author>—</span>
+    <span class="sep">·</span>
+    <span>local tool — nothing is pushed until you confirm</span>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

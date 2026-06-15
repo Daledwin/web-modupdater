@@ -1,0 +1,5 @@
+# This is a Linux/Docker tool — keep LF everywhere (shell scripts must stay LF).
+* text=auto eol=lf
+*.sh text eol=lf
+*.mjs text eol=lf
+*.js text eol=lf

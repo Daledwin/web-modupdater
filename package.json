@@ -1,0 +1,15 @@
+{
+  "name": "web-modupdater",
+  "version": "1.0.0",
+  "description": "Local web tool to add/update Minecraft Fabric mods in the Daledwin/modpack repo (jar -> index.json -> commit & push via SSH deploy key).",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node test/run.js"
+  },
+  "dependencies": {}
+}
