@@ -11,7 +11,9 @@ services:
     build: .
     container_name: web-modupdater
     ports:
-      - "127.0.0.1:${PORT:-8787}:8787"
+      # Default: localhost only. Set BIND_ADDR=0.0.0.0 in .env to expose on the LAN IP
+      # (do that ONLY together with AUTH_PASSWORD below, and never on a public IP).
+      - "${BIND_ADDR:-127.0.0.1}:${PORT:-8787}:8787"
     environment:
       MODPACK_REPO_SSH: ${MODPACK_REPO_SSH:-git@github.com:Daledwin/modpack.git}
       MODPACK_BRANCHES: ${MODPACK_BRANCHES:-staging,main}
@@ -19,6 +21,9 @@ services:
       MODPACK_MC_VERSION: ${MODPACK_MC_VERSION:-1.21.11}
       GIT_AUTHOR_NAME: ${GIT_AUTHOR_NAME:-modpack-tool}
       GIT_AUTHOR_EMAIL: ${GIT_AUTHOR_EMAIL:-modpack-tool@local}
+      # Optional HTTP Basic Auth (enabled only when AUTH_PASSWORD is non-empty).
+      AUTH_USER: ${AUTH_USER:-admin}
+      AUTH_PASSWORD: ${AUTH_PASSWORD:-}
       DEPLOY_KEY_PATH: /run/secrets/deploy_key
       WORK_DIR: /data
       MODPACK_CLONE_DIR: /data/modpack-clone

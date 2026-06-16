@@ -64,6 +64,11 @@ export const config = {
   authorName: process.env.GIT_AUTHOR_NAME || 'modpack-tool',
   authorEmail: process.env.GIT_AUTHOR_EMAIL || 'modpack-tool@local',
 
+  // Optional HTTP Basic Auth gate. Enabled ONLY when AUTH_PASSWORD is set.
+  // Stopgap for LAN exposure — use real SSO + TLS for anything public.
+  authUser: process.env.AUTH_USER || 'admin',
+  authPassword: process.env.AUTH_PASSWORD || '',
+
   // Expected Minecraft version (used only to warn, never to block)
   expectedMcVersion: process.env.MODPACK_MC_VERSION || '1.21.11',
 

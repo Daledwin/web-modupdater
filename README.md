@@ -184,6 +184,11 @@ throwaway local remote and verifies the resulting commit history and `index.json
 ## Security notes
 
 * Bind is `127.0.0.1` by default — this is a **local** tool; don't expose it publicly.
+* **LAN exposure (stopgap)**: set `BIND_ADDR=0.0.0.0` to reach it from other devices via the
+  machine's LAN IP, and set `AUTH_PASSWORD` (with `AUTH_USER`) to require an HTTP Basic Auth
+  login. Basic Auth is sent in clear over plain HTTP, so use it on a **trusted private network
+  only** — never on a public IP. For real public access, front it with a TLS reverse proxy +
+  SSO (e.g. Cloudflare Tunnel + Access, or oauth2-proxy).
 * The deploy key grants write access to the modpack repo only. Keep it `0600` and outside
   the project (it's covered by `.gitignore`).
 * `fabric.mod.json` is read with a minimal in‑house ZIP reader (no archive is extracted to

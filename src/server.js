@@ -3,6 +3,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
 import { createJob, getJob, subscribe } from './jobs.js';
@@ -266,7 +267,44 @@ async function handleApi(req, res, url) {
   return sendJson(res, 404, { error: 'Not found' });
 }
 
+// ---- Optional HTTP Basic Auth (enabled only when AUTH_PASSWORD is set) ------
+function safeEqual(a, b) {
+  const ba = Buffer.from(String(a));
+  const bb = Buffer.from(String(b));
+  if (ba.length !== bb.length) {
+    crypto.timingSafeEqual(ba, ba); // spend comparable time, then fail
+    return false;
+  }
+  return crypto.timingSafeEqual(ba, bb);
+}
+
+function authorized(req) {
+  if (!config.authPassword) return true; // gate disabled
+  const m = (req.headers['authorization'] || '').match(/^Basic\s+(.+)$/i);
+  if (!m) return false;
+  let creds;
+  try {
+    creds = Buffer.from(m[1], 'base64').toString('utf8');
+  } catch {
+    return false;
+  }
+  const i = creds.indexOf(':');
+  if (i < 0) return false;
+  const userOk = safeEqual(creds.slice(0, i), config.authUser);
+  const passOk = safeEqual(creds.slice(i + 1), config.authPassword);
+  return userOk && passOk;
+}
+
 const server = http.createServer((req, res) => {
+  if (!authorized(req)) {
+    res.writeHead(401, {
+      'WWW-Authenticate': 'Basic realm="web-modupdater", charset="UTF-8"',
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-store',
+    });
+    res.end('Authentication required');
+    return;
+  }
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   if (url.pathname.startsWith('/api/')) {
     handleApi(req, res, url).catch((e) => {
@@ -300,5 +338,12 @@ server.listen(config.port, config.host, () => {
     keyState = `NOT READY — ${e.message}`;
   }
   console.log(`  deploy key      :  ${keyState}`);
-  console.log(`  commit identity :  ${config.authorName} <${config.authorEmail}>\n`);
+  console.log(`  commit identity :  ${config.authorName} <${config.authorEmail}>`);
+  console.log(
+    `  http auth       :  ${
+      config.authPassword
+        ? `enabled (user "${config.authUser}")`
+        : 'DISABLED (no AUTH_PASSWORD)'
+    }\n`
+  );
 });
